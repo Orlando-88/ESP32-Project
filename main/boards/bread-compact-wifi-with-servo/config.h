@@ -6,27 +6,21 @@
 #define AUDIO_INPUT_SAMPLE_RATE  16000
 #define AUDIO_OUTPUT_SAMPLE_RATE 24000
 
-// 如果使用 Duplex I2S 模式，请注释下面一行
 #define AUDIO_I2S_METHOD_SIMPLEX
 
 #ifdef AUDIO_I2S_METHOD_SIMPLEX
-
 #define AUDIO_I2S_MIC_GPIO_WS   GPIO_NUM_4
 #define AUDIO_I2S_MIC_GPIO_SCK  GPIO_NUM_5
 #define AUDIO_I2S_MIC_GPIO_DIN  GPIO_NUM_6
 #define AUDIO_I2S_SPK_GPIO_DOUT GPIO_NUM_7
 #define AUDIO_I2S_SPK_GPIO_BCLK GPIO_NUM_15
 #define AUDIO_I2S_SPK_GPIO_LRCK GPIO_NUM_16
-
 #else
-
 #define AUDIO_I2S_GPIO_WS GPIO_NUM_4
 #define AUDIO_I2S_GPIO_BCLK GPIO_NUM_5
 #define AUDIO_I2S_GPIO_DIN  GPIO_NUM_6
 #define AUDIO_I2S_GPIO_DOUT GPIO_NUM_7
-
 #endif
-
 
 #define BUILTIN_LED_GPIO        GPIO_NUM_48
 #define BOOT_BUTTON_GPIO        GPIO_NUM_0
@@ -52,22 +46,20 @@
 #define DISPLAY_MIRROR_X true
 #define DISPLAY_MIRROR_Y true
 
-// SG90舵机控制引脚
-#define SERVO_GPIO GPIO_NUM_18
+// ======== 🤖 机器人外设全新安全引脚分配 ========
+// 完美避开音频、屏幕、按键，请后续根据此表连接硬件
+#define ROBOT_SG90_PIN          GPIO_NUM_18  // 原小智预留舵机引脚
+#define ROBOT_SG90_180_PIN      GPIO_NUM_8   // 空闲可用
+#define ROBOT_SERVO_PIN         GPIO_NUM_9   // 空闲可用
+#define ROBOT_RELAY1_PIN        GPIO_NUM_13  // 吸盘继电器
+#define ROBOT_RELAY2_PIN        GPIO_NUM_14  // 鼓风机继电器
 
-// 舵机参数配置
-#define SERVO_MIN_PULSEWIDTH_US 500           // 最小脉宽（微秒）对应0度
-#define SERVO_MAX_PULSEWIDTH_US 2500          // 最大脉宽（微秒）对应180度
-#define SERVO_MIN_DEGREE 0                    // 最小角度
-#define SERVO_MAX_DEGREE 180                  // 最大角度
-#define SERVO_TIMEBASE_RESOLUTION_HZ 1000000  // 1MHz, 1us per tick
-#define SERVO_TIMEBASE_PERIOD 20000           // 20000 ticks, 20ms (50Hz)
+// 步进电机专用宏定义（无需带 GPIO_NUM_ 前缀，供 AccelStepper 使用）
+#define ROBOT_STEPPER_DIR_PIN   10
+#define ROBOT_STEPPER_PUL_PIN   11
+#define ROBOT_STEPPER_ENA_PIN   12
+// ===============================================
 
-// 舵机默认位置和限制
-#define SERVO_DEFAULT_ANGLE 90                // 默认中心位置
-#define SERVO_MAX_SPEED_DEGREE_PER_SEC 180    // 最大转速限制
-
-// 板子版本信息
 #define BREAD_COMPACT_WIFI_WITH_SERVO_VERSION "1.0.0"
 
 #endif // _BOARD_CONFIG_H_

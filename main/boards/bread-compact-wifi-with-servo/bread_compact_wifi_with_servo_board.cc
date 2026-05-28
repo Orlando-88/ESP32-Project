@@ -6,9 +6,17 @@
 #include "button.h"
 #include "config.h"
 #include "mcp_server.h"
-#include "servo_controller.h"
 #include "led/single_led.h"
 #include "assets/lang_config.h"
+
+// 引入咱们写好的机器人模块驱动
+#include "sg90.h"
+#include "sg90_180.h"
+#include "servo.h"
+#include "stepper.h"
+#include "relay.h"
+#include "relay2.h"
+#include "protocol.h"
 
 #include <wifi_station.h>
 #include <esp_log.h>
@@ -35,7 +43,6 @@ private:
     Button touch_button_;
     Button volume_up_button_;
     Button volume_down_button_;
-    ServoController *servo_controller_;
 
     void InitializeDisplayI2c() {
         i2c_master_bus_config_t bus_config = {
@@ -54,7 +61,6 @@ private:
     }
 
     void InitializeSsd1306Display() {
-        // SSD1306 config
         esp_lcd_panel_io_i2c_config_t io_config = {
             .dev_addr = 0x3C,
             .on_color_trans_done = nullptr,
@@ -89,7 +95,6 @@ private:
 #endif
         ESP_LOGI(TAG, "SSD1306 driver installed");
 
-        // Reset the display
         ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_));
         if (esp_lcd_panel_init(panel_) != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize display");
@@ -97,9 +102,6 @@ private:
             return;
         }
         ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_, false));
-
-        // Set the display to on
-        ESP_LOGI(TAG, "Turning display on");
         ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_, true));
 
         display_ = new OledDisplay(panel_io_, panel_, DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y,
@@ -152,34 +154,24 @@ private:
         });
     }
 
-    void InitializeServoController()
-    {
-        ESP_LOGI(TAG, "初始化SG90舵机控制器");
-        servo_controller_ = new ServoController(SERVO_GPIO);
+    // 🚀 全新替换：机器人全栈硬件初始化
+    void InitializeRobot() {
+        ESP_LOGI(TAG, "🤖 正在启动机器人硬件外设...");
+        
+        // 1. 舵机与继电器初始化 (使用我们在 config.h 定义的安全引脚)
+        sg90Init(ROBOT_SG90_PIN);
+        sg90_180Init(ROBOT_SG90_180_PIN);
+        servoInit(ROBOT_SERVO_PIN);
+        relayInit(ROBOT_RELAY1_PIN);
+        relay2Init(ROBOT_RELAY2_PIN);
 
-        if (!servo_controller_->Initialize())
-        {
-            ESP_LOGE(TAG, "舵机控制器初始化失败");
-            delete servo_controller_;
-            servo_controller_ = nullptr;
-            return;
-        }
+        // 2. 步进电机初始化
+        stepperInit();
 
-        // 设置运动完成回调（可选，用于状态指示）
-        servo_controller_->SetOnMoveCompleteCallback([this]() {
-            // 运动完成时闪烁LED
-            gpio_set_level(BUILTIN_LED_GPIO, 1);
-            vTaskDelay(pdMS_TO_TICKS(100));
-            gpio_set_level(BUILTIN_LED_GPIO, 0); });
+        // 3. 开启树莓派上位机通讯后台进程
+        protocolInit();
 
-        ESP_LOGI(TAG, "SG90舵机控制器初始化完成");
-    }
-
-    // 物联网初始化，逐步迁移到 MCP 协议
-    void InitializeTools() {
-        if (servo_controller_ != nullptr) {
-            servo_controller_->InitializeTools();
-        }
+        ESP_LOGI(TAG, "🤖 机器人硬件与通讯线程已全面启动！");
     }
 
 public:
@@ -187,22 +179,14 @@ public:
         boot_button_(BOOT_BUTTON_GPIO),
         touch_button_(TOUCH_BUTTON_GPIO),
         volume_up_button_(VOLUME_UP_BUTTON_GPIO),
-        volume_down_button_(VOLUME_DOWN_BUTTON_GPIO),
-        servo_controller_(nullptr) {
+        volume_down_button_(VOLUME_DOWN_BUTTON_GPIO) {
         InitializeDisplayI2c();
         InitializeSsd1306Display();
         InitializeButtons();
-        InitializeServoController();
-        InitializeTools();
+        InitializeRobot(); // 将其挂载到启动主流程
     }
 
-    virtual ~BreadCompactWifiWithServoBoard()
-    {
-        if (servo_controller_)
-        {
-            delete servo_controller_;
-        }
-    }
+    virtual ~BreadCompactWifiWithServoBoard() {}
 
     virtual Led* GetLed() override {
         static SingleLed led(BUILTIN_LED_GPIO);

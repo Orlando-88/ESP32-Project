@@ -3,6 +3,11 @@
  * Reference: https://modelcontextprotocol.io/specification/2024-11-05
  */
 
+/*
+ * MCP Server Implementation
+ * Reference: https://modelcontextprotocol.io/specification/2024-11-05
+ */
+
 #include "mcp_server.h"
 #include <esp_log.h>
 #include <esp_app_desc.h>
@@ -13,6 +18,15 @@
 #include "application.h"
 #include "display.h"
 #include "board.h"
+
+// ======== 🤖 引入机器人外设控制底层的头文件 ========
+#include "sg90.h"
+#include "sg90_180.h"
+#include "servo.h"
+#include "stepper.h"
+#include "relay.h"
+#include "relay2.h"
+// =================================================
 
 #define TAG "MCP"
 
@@ -102,6 +116,96 @@ void McpServer::AddCommonTools() {
                 return camera->Explain(question);
             });
     }
+
+    // =========================================================================
+    // 🤖 机器人专属超能力注册区 (MCP Tools)
+    // 这里的文字描述是给云端 AI 看的，告诉它该怎么操纵我们的物理外设
+    // =========================================================================
+
+    AddTool("robot.control_platform",
+        "Control the vertical movement of the robot platform (stepper motor). Valid actions: 'up', 'down', 'stop'.",
+        PropertyList({
+            Property("action", kPropertyTypeString)
+        }),
+        [](const PropertyList& properties) -> ReturnValue {
+            auto action = properties["action"].value<std::string>();
+            if (action == "up") {
+                stepperStartContinuous(6000);
+            } else if (action == "down") {
+                stepperStartContinuous(-6000);
+            } else {
+                stepperStop();
+            }
+            ESP_LOGI(TAG, "MCP Command executed: Platform -> %s", action.c_str());
+            return "{\"status\": \"success\", \"action\": \"" + action + "\"}";
+        });
+
+    AddTool("robot.control_suction",
+        "Turn the vacuum suction cup 'on' or 'off'.",
+        PropertyList({
+            Property("state", kPropertyTypeString)
+        }),
+        [](const PropertyList& properties) -> ReturnValue {
+            auto state = properties["state"].value<std::string>();
+            relaySet(state == "on");
+            ESP_LOGI(TAG, "MCP Command executed: Suction -> %s", state.c_str());
+            return "{\"status\": \"success\", \"state\": \"" + state + "\"}";
+        });
+
+    AddTool("robot.control_blower",
+        "Turn the blower 'on' or 'off'.",
+        PropertyList({
+            Property("state", kPropertyTypeString)
+        }),
+        [](const PropertyList& properties) -> ReturnValue {
+            auto state = properties["state"].value<std::string>();
+            relay2Set(state == "on");
+            ESP_LOGI(TAG, "MCP Command executed: Blower -> %s", state.c_str());
+            return "{\"status\": \"success\", \"state\": \"" + state + "\"}";
+        });
+
+    AddTool("robot.control_rod",
+        "Control the suction rod position. Valid actions: 'rotate' (30 deg), 'return' (90 deg), 'drop' (150 deg).",
+        PropertyList({
+            Property("action", kPropertyTypeString)
+        }),
+        [](const PropertyList& properties) -> ReturnValue {
+            auto action = properties["action"].value<std::string>();
+            if (action == "rotate") sg90Write(30);
+            else if (action == "return") sg90Write(90);
+            else if (action == "drop") sg90Write(150);
+            ESP_LOGI(TAG, "MCP Command executed: Rod -> %s", action.c_str());
+            return "{\"status\": \"success\", \"action\": \"" + action + "\"}";
+        });
+
+    AddTool("robot.control_move",
+        "Move the suction rod horizontally. Valid actions: 'merge' (0 deg), 'stop' (90 deg), 'separate' (180 deg).",
+        PropertyList({
+            Property("action", kPropertyTypeString)
+        }),
+        [](const PropertyList& properties) -> ReturnValue {
+            auto action = properties["action"].value<std::string>();
+            if (action == "merge") sg90_180Write(0);
+            else if (action == "stop") sg90_180Write(90);
+            else if (action == "separate") sg90_180Write(180);
+            ESP_LOGI(TAG, "MCP Command executed: Move -> %s", action.c_str());
+            return "{\"status\": \"success\", \"action\": \"" + action + "\"}";
+        });
+
+    AddTool("robot.control_clamp",
+        "Open or close the mechanical clamp. Valid actions: 'open' (0 deg), 'close' (93 deg).",
+        PropertyList({
+            Property("action", kPropertyTypeString)
+        }),
+        [](const PropertyList& properties) -> ReturnValue {
+            auto action = properties["action"].value<std::string>();
+            if (action == "open") servoWrite(0);
+            else if (action == "close") servoWrite(93);
+            ESP_LOGI(TAG, "MCP Command executed: Clamp -> %s", action.c_str());
+            return "{\"status\": \"success\", \"action\": \"" + action + "\"}";
+        });
+
+    // =========================================================================
 
     // Restore the original tools list to the end of the tools list
     tools_.insert(tools_.end(), original_tools.begin(), original_tools.end());

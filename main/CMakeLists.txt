@@ -28,6 +28,13 @@ set(SOURCES "audio/audio_codec.cc"
 
 set(INCLUDE_DIRS "." "display" "audio" "protocols")
 
+# ======= 🤖 新增：添加队友机器人的硬件驱动与通讯层 =======
+# 自动抓取 robot_drivers 文件夹下的所有代码文件，并加入头文件路径
+file(GLOB ROBOT_DRIVERS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/robot_drivers/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/robot_drivers/*.c)
+list(APPEND SOURCES ${ROBOT_DRIVERS_SOURCES})
+list(APPEND INCLUDE_DIRS "robot_drivers")
+# ========================================================
+
 # 添加板级公共文件
 file(GLOB BOARD_COMMON_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/boards/common/*.cc)
 list(APPEND SOURCES ${BOARD_COMMON_SOURCES})
@@ -144,7 +151,7 @@ elseif(CONFIG_BOARD_TYPE_LILYGO_T_DISPLAY_S3_PRO_MVSRLORA_NO_BATTERY)
     set(BOARD_TYPE "lilygo-t-display-s3-pro-mvsrlora")
 elseif(CONFIG_BOARD_TYPE_MOVECALL_MOJI_ESP32S3)
     set(BOARD_TYPE "movecall-moji-esp32s3")
-    elseif(CONFIG_BOARD_TYPE_MOVECALL_CUICAN_ESP32S3)
+elseif(CONFIG_BOARD_TYPE_MOVECALL_CUICAN_ESP32S3)
     set(BOARD_TYPE "movecall-cuican-esp32s3")
 elseif(CONFIG_BOARD_TYPE_ATK_DNESP32S3)
     set(BOARD_TYPE "atk-dnesp32s3")
@@ -217,6 +224,7 @@ elseif(CONFIG_BOARD_TYPE_SURFER_C3_1_14TFT)
 elseif(CONFIG_BOARD_TYPE_BREAD_COMPACT_WIFI_WITH_SERVO)
     set(BOARD_TYPE "bread-compact-wifi-with-servo")
 endif()
+
 file(GLOB BOARD_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/*.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD_TYPE}/*.c
